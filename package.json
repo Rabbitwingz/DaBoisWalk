@@ -1,0 +1,7 @@
+{
+  "name": "wedding-challenge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private 30-day steps, no-alcohol and weigh-in challenge for Manan and Mathew.",
+  "engines": { "node": ">=18" }
+}

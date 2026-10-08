@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Wedding Challenge</title>
+<meta name="theme-color" content="#F5FBF5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1511" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=add_a_photo,calendar_month,check,chevron_left,chevron_right,close,delete,directions_walk,local_bar,local_fire_department,logout,monitor_weight,no_drinks,rule,schedule,sports_score,today,trophy,visibility,visibility_off&display=block">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div class="boot" id="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></div>
+
+<!-- ============ Sign in ============ -->
+<main class="login" id="login" hidden>
+  <div class="login-card">
+    <svg class="login-mark" viewBox="0 0 120 64" aria-hidden="true">
+      <circle cx="42" cy="32" r="24" class="lm-a"/>
+      <circle cx="78" cy="32" r="24" class="lm-b"/>
+    </svg>
+    <div class="login-head">
+      <h1 class="login-title">Wedding Challenge</h1>
+      <p class="login-sub">30 days of steps, zero alcohol and weekly weigh-ins. Oct 15 to Nov 13.</p>
+    </div>
+
+    <form id="login-form" novalidate>
+      <fieldset class="who-pick">
+        <legend>Who’s signing in?</legend>
+        <label class="who-option">
+          <input type="radio" name="user" value="manan">
+          <span class="avatar xl" data-avatar="manan"></span>
+          <span class="who-name">Manan</span>
+          <span class="who-check"><span class="msr">check</span></span>
+        </label>
+        <label class="who-option">
+          <input type="radio" name="user" value="mathew">
+          <span class="avatar xl" data-avatar="mathew"></span>
+          <span class="who-name">Mathew</span>
+          <span class="who-check"><span class="msr">check</span></span>
+        </label>
+      </fieldset>
+
+      <input class="sr-only" type="text" id="login-username" name="username" autocomplete="username" tabindex="-1" aria-hidden="true">
+      <div class="tf has-action" id="pw-tf">
+        <input id="pw" type="password" autocomplete="current-password" placeholder=" " aria-describedby="login-err">
+        <label for="pw">Password</label>
+        <button type="button" class="icon-btn" id="pw-toggle" aria-label="Show password"><span class="msr">visibility</span></button>
+      </div>
+      <p class="tf-support err" id="login-err" role="alert"></p>
+
+      <button class="btn btn-filled btn-l btn-block" type="submit" id="login-btn">Sign in</button>
+    </form>
+  </div>
+</main>
+
+<!-- ============ App ============ -->
+<div class="app" id="app" hidden>
+  <nav class="nav" aria-label="Sections">
+    <button type="button" class="nav-item" data-tab="today"><span class="nav-ind"><span class="msr">today</span></span><span class="nav-label">Today</span></button>
+    <button type="button" class="nav-item" data-tab="calendar"><span class="nav-ind"><span class="msr">calendar_month</span></span><span class="nav-label">Calendar</span></button>
+    <button type="button" class="nav-item" data-tab="weigh"><span class="nav-ind"><span class="msr">monitor_weight</span></span><span class="nav-label">Weigh-ins</span></button>
+    <button type="button" class="nav-item" data-tab="rules"><span class="nav-ind"><span class="msr">rule</span></span><span class="nav-label">Rules</span></button>
+  </nav>
+
+  <div class="main">
+    <header class="topbar" id="topbar">
+      <div class="topbar-title">
+        <h1>Wedding Challenge</h1>
+        <span class="day-chip" id="day-chip"></span>
+      </div>
+      <div class="menu-wrap">
+        <button type="button" class="me-btn" id="me-btn" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="Account"></button>
+        <div class="menu" id="menu" hidden>
+          <p class="menu-who" id="menu-who"></p>
+          <button type="button" class="menu-item" id="signout"><span class="msr">logout</span>Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <p class="conn" id="conn" role="status" hidden></p>
+
+    <!-- Today -->
+    <section class="tab tab-today" id="tab-today" aria-label="Today">
+      <div class="hero" id="hero">
+        <div class="ring-wrap" id="ring-wrap">
+          <svg viewBox="0 0 240 240" aria-hidden="true">
+            <circle class="ring-track" cx="120" cy="120" r="96"/>
+            <path class="ring-ind" id="ring-ind" pathLength="100"/>
+          </svg>
+          <div class="ring-center">
+            <span class="ring-num" id="ring-num">0</span>
+            <span class="ring-sub" id="ring-sub">of 10,000 steps</span>
+          </div>
+        </div>
+        <div class="countdown" id="countdown" hidden aria-label="Time until the challenge starts">
+          <div><b id="c-d">0</b><span>days</span></div>
+          <div><b id="c-h">00</b><span>hrs</span></div>
+          <div><b id="c-m">00</b><span>min</span></div>
+          <div><b id="c-s">00</b><span>sec</span></div>
+        </div>
+        <div class="hero-text">
+          <p class="hero-hi" id="hero-hi"></p>
+          <h2 class="hero-h" id="hero-h"></h2>
+          <p class="hero-p" id="hero-p"></p>
+          <p class="deadline" id="deadline" hidden><span class="msr">schedule</span><span id="deadline-t"></span></p>
+        </div>
+      </div>
+
+      <div class="today-grid">
+        <div class="card log" id="log-card">
+          <div class="log-head">
+            <h2 class="title-l">Log a day</h2>
+            <div class="date-nav">
+              <button type="button" class="icon-btn tonal" id="d-prev" aria-label="Previous day"><span class="msr">chevron_left</span></button>
+              <output id="d-label" aria-live="polite"></output>
+              <button type="button" class="icon-btn tonal" id="d-next" aria-label="Next day"><span class="msr">chevron_right</span></button>
+            </div>
+          </div>
+          <p class="log-note" id="log-note" hidden></p>
+
+          <form id="log-form" novalidate>
+            <fieldset id="log-fs">
+              <div class="field">
+                <div class="tf" id="steps-tf">
+                  <input id="f-steps" inputmode="numeric" autocomplete="off" enterkeyhint="done" placeholder=" " aria-describedby="steps-hint">
+                  <label for="f-steps">Steps</label>
+                  <span class="tf-icon msr" aria-hidden="true">directions_walk</span>
+                </div>
+                <p class="tf-support" id="steps-hint"></p>
+              </div>
+
+              <div class="field">
+                <span class="field-label" id="alc-l">Alcohol today</span>
+                <div class="btn-group" role="group" aria-labelledby="alc-l">
+                  <button type="button" id="alc-dry" aria-pressed="false"><span class="msr">no_drinks</span>Dry</button>
+                  <button type="button" id="alc-drank" class="bad" aria-pressed="false"><span class="msr">local_bar</span>Drank</button>
+                </div>
+              </div>
+
+              <div class="field" id="kg-wrap" hidden>
+                <div class="tf" id="kg-tf">
+                  <input id="f-kg" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder=" " aria-describedby="kg-hint">
+                  <label for="f-kg">Weight in kg</label>
+                  <span class="tf-icon msr" aria-hidden="true">monitor_weight</span>
+                </div>
+                <p class="tf-support" id="kg-hint">Weigh-in day. Morning, before eating.</p>
+              </div>
+
+              <div class="shot">
+                <button type="button" class="shot-thumb" id="shot-thumb" aria-label="View screenshot"></button>
+                <div class="shot-info">
+                  <span class="field-label">Step screenshot</span>
+                  <p class="shot-status" id="shot-status"></p>
+                  <div class="shot-actions">
+                    <button type="button" class="btn btn-tonal" id="shot-btn"><span class="msr">add_a_photo</span><span id="shot-btn-t">Add screenshot</span></button>
+                    <button type="button" class="btn btn-text" id="shot-remove" hidden>Remove</button>
+                  </div>
+                  <input type="file" id="shot-input" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-filled btn-l btn-block" id="save">Save day</button>
+            </fieldset>
+          </form>
+        </div>
+
+        <div class="card versus">
+          <h2 class="title-l">Head to head</h2>
+          <div class="vs-grid" id="vs-grid"></div>
+          <p class="verdict" id="verdict"><span class="msr">trophy</span><span id="verdict-t"></span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Calendar -->
+    <section class="tab" id="tab-calendar" aria-label="Calendar" hidden>
+      <div class="cals" id="cals"></div>
+      <div class="card legend-card">
+        <h2 class="title-m">Key</h2>
+        <ul class="legend">
+          <li><i class="sw"></i>Not logged</li>
+          <li><i class="sw miss"></i>Under 10k</li>
+          <li><i class="sw hit"></i>10k to 15k</li>
+          <li><i class="sw big"></i>15k and over</li>
+          <li><i class="sw bar dry"></i>Dry</li>
+          <li><i class="sw bar drank"></i>Drank</li>
+          <li><i class="sw dot"></i>Weigh-in</li>
+          <li><i class="sw today"></i>Today</li>
+        </ul>
+        <p class="hint">Tap any day to see the steps, alcohol and screenshot.</p>
+      </div>
+    </section>
+
+    <!-- Weigh-ins -->
+    <section class="tab" id="tab-weigh" aria-label="Weigh-ins" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="title-l">Body weight lost</h2>
+          <p class="hint">Compared by % of starting weight, not kilos.</p>
+        </div>
+        <div class="chart-legend" id="chart-legend"></div>
+        <div class="chart-box" id="chart-box"><svg id="chart" role="img" aria-label="Percent of body weight lost at each weigh-in"></svg></div>
+        <p class="empty" id="chart-empty">The trend line appears after the Oct 22 weigh-in.</p>
+      </div>
+      <div class="card">
+        <h2 class="title-l">Weigh-ins</h2>
+        <div class="table-wrap">
+          <table class="wtable">
+            <thead><tr><th scope="col">Date</th><th scope="col" id="wh-0"></th><th scope="col" id="wh-1"></th></tr></thead>
+            <tbody id="wbody"></tbody>
+          </table>
+        </div>
+        <p class="hint">Morning, before eating. No starving or dehydrating beforehand.</p>
+      </div>
+    </section>
+
+    <!-- Rules -->
+    <section class="tab" id="tab-rules" aria-label="Rules" hidden>
+      <div class="stakes">
+        <span class="stakes-icon"><span class="msr">trophy</span></span>
+        <div>
+          <h2 class="title-l">The stakes</h2>
+          <p>Whoever loses the smaller % of body weight pays for dinner and the first round on Nov 14.</p>
+        </div>
+      </div>
+      <div class="rules-grid">
+        <div class="card">
+          <h2 class="title-l">The 3 goals</h2>
+          <ul class="goal-list">
+            <li><span class="goal-icon"><span class="msr">directions_walk</span></span><div><b>10k to 15k steps</b><span>Every single day.</span></div></li>
+            <li><span class="goal-icon"><span class="msr">no_drinks</span></span><div><b>Zero alcohol</b><span>For all 30 days.</span></div></li>
+            <li><span class="goal-icon"><span class="msr">monitor_weight</span></span><div><b>Lose weight</b><span>Realistic target: 3 to 5 kg down by Nov 13.</span></div></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2 class="title-l">Rules</h2>
+          <ol class="rule-list">
+            <li>Add a step screenshot by 11:55 pm every day.</li>
+            <li>Weigh in on Oct 15, 22, 29, Nov 5 and the final on Nov 13. Morning, before eating.</li>
+            <li>No starving or dehydrating before a weigh-in.</li>
+            <li>Never miss the step target two days in a row.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Day details sheet -->
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <div class="sheet-body" id="sheet-body"></div>
+</dialog>
+
+<!-- Confirm dialog -->
+<dialog class="confirm" id="confirm" aria-labelledby="confirm-title">
+  <h2 id="confirm-title"></h2>
+  <p id="confirm-text"></p>
+  <div class="confirm-actions">
+    <button type="button" class="btn btn-text" id="confirm-no">Cancel</button>
+    <button type="button" class="btn btn-filled" id="confirm-yes">Remove</button>
+  </div>
+</dialog>
+
+<div class="snackbar" id="snackbar" role="status" aria-live="polite"></div>
+
+<script src="/app.js" defer></script>
+</body>
+</html>
