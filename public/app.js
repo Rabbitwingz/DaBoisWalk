@@ -59,8 +59,12 @@
   const avatar = (p, size = '') =>
     `<span class="avatar ${size}" data-u="${p}" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="${AV[p]}"/><text x="50" y="52">${NAMES[p][0]}</text></svg></span>`;
 
-  const cookie = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="${blobPath(8, 0.075, 50)}"/></svg>`;
-  document.documentElement.style.setProperty('--cookie', `url("data:image/svg+xml,${encodeURIComponent(cookie)}")`);
+  const maskVar = (name, n, amp) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="${blobPath(n, amp, 50)}"/></svg>`;
+    document.documentElement.style.setProperty(name, `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+  };
+  maskVar('--cookie', 8, 0.075);
+  maskVar('--clover', 4, 0.15);
 
   (function buildRing() {
     let d = '';
@@ -141,10 +145,10 @@
     $('boot').hidden = true;
     $('app').hidden = true;
     $('login').hidden = false;
-    $('sheet').open && $('sheet').close();
-    document.title = 'Sign in to Wedding Challenge';
+    ['sheet', 'confirm'].forEach((id) => { if ($(id).open) $(id).close(); });
+    document.title = 'Sign in to Da Bois Walk';
     let last = null;
-    try { last = localStorage.getItem('wc-last-user'); } catch (e) { /* storage off */ }
+    try { last = localStorage.getItem('dbw-last-user'); } catch (e) { /* storage off */ }
     loginRadios().forEach((r) => { r.checked = r.value === last; });
     $('login-username').value = last || '';
     $('pw').value = '';
@@ -174,7 +178,7 @@
     btn.disabled = true; btn.textContent = 'Signing in…';
     try {
       await api('/api/login', 'POST', { user, password });
-      try { localStorage.setItem('wc-last-user', user); } catch (err) { /* storage off */ }
+      try { localStorage.setItem('dbw-last-user', user); } catch (err) { /* storage off */ }
       const me = await api('/api/me');
       startApp(me);
     } catch (err) {
@@ -202,7 +206,7 @@
     $('boot').hidden = true;
     $('login').hidden = true;
     $('app').hidden = false;
-    document.title = 'Wedding Challenge';
+    document.title = 'Da Bois Walk';
 
     buildStatic();
     const fromHash = location.hash.slice(1);
@@ -264,6 +268,10 @@
     window.scrollTo({ top: 0 });
   }
   document.querySelectorAll('.nav-item').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  window.addEventListener('hashchange', () => {
+    const t = location.hash.slice(1);
+    if (S.me && TABS.includes(t) && t !== S.tab) setTab(t, false);
+  });
 
   /* ---------- account menu ---------- */
   function closeMenu() { $('menu').hidden = true; $('me-btn').setAttribute('aria-expanded', 'false'); }
@@ -296,11 +304,12 @@
       if (d > S.today) break;
       s.elapsed++;
       const r = rec(p, d), st = stepsOf(p, d), at = shotOf(p, d);
-      if (st === null) { prevMiss = false; if (d < S.today) s.unlogged++; }
-      else {
-        s.logged++; s.total += st;
-        if (st >= goal) { s.hit++; prevMiss = false; } else { if (prevMiss) s.b2b++; prevMiss = true; }
-      }
+      // A past day with no steps logged counts as a miss. Today only counts once it is logged.
+      if (st !== null) { s.logged++; s.total += st; if (st >= goal) s.hit++; }
+      else if (d < S.today) s.unlogged++;
+      const miss = st !== null ? st < goal : d < S.today;
+      if (miss && prevMiss) s.b2b++;
+      prevMiss = miss;
       if (r && r.alcohol === 'dry') s.dry++;
       else if (r && r.alcohol === 'drank') s.drank++;
       if (at !== null && at > deadline(d)) s.late++;
@@ -337,6 +346,7 @@
      ===================================================================== */
   function renderAll(refill) {
     if (!S.me) return;
+    S.stats = { manan: stats('manan'), mathew: stats('mathew') };   // computed once per render, shared below
     renderTop();
     renderHero();
     renderForm(refill);
@@ -512,6 +522,7 @@
     const lock = !canLog(d) || !S.loaded || S.uploading;
     $('shot-btn').disabled = lock;
     $('shot-remove').disabled = lock;
+    $('save').disabled = S.uploading;
   }
 
   function moveDay(n) {
@@ -546,7 +557,7 @@
   $('log-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const d = S.sel;
-    if (S.saving || !canLog(d)) return;
+    if (S.saving || S.uploading || !canLog(d)) return;   // never save while a screenshot is mid-upload
     const steps = parseSteps($('f-steps').value);
     if (steps === false) { fieldErr('steps', 'Enter whole steps, like 11400 or 11.4k.'); $('f-steps').focus(); return; }
     let kg = null;
@@ -634,8 +645,7 @@
 
   /* ---------- head to head ---------- */
   function renderVersus() {
-    const st = {};
-    PLAYERS.forEach((p) => { st[p] = stats(p); });
+    const st = S.stats;
     const a = st[S.me], b = st[other(S.me)];
     let leader = null;
     if (a.pct !== null && b.pct !== null && Math.abs(a.pct - b.pct) >= 0.05) leader = a.pct > b.pct ? S.me : other(S.me);
@@ -700,7 +710,7 @@
   function renderCals() {
     const lead = (new Date(S.start + 'T00:00:00Z').getUTCDay() + 6) % 7;   // Monday first
     $('cals').innerHTML = order().map((p) => {
-      const s = stats(p);
+      const s = S.stats[p];
       let cells = '';
       for (let i = 0; i < lead; i++) cells += '<span></span>';
       S.dates.forEach((d) => {
@@ -833,10 +843,10 @@
     W.forEach((d, i) => { g += `<text class="ax" x="${x(i)}" y="${height - 10}" text-anchor="middle">${fmtShort(d)}</text>`; });
     series.forEach((s) => {
       if (!s.pts.length) return;
-      g += `<path class="ln c-${s.p}" style="fill:none" d="${s.pts.map((q, j) => (j ? 'L' : 'M') + x(q.i) + ' ' + y(q.v)).join('')}"/>`;
+      g += `<path class="ln c-${s.p}" d="${s.pts.map((q, j) => (j ? 'L' : 'M') + x(q.i) + ' ' + y(q.v)).join('')}"/>`;
       s.pts.forEach((q) => { g += `<circle class="pt c-${s.p}" cx="${x(q.i)}" cy="${y(q.v)}" r="6"/>`; });
       const last = s.pts[s.pts.length - 1];
-      if (last.i > 0) g += `<text class="val c-${s.p}" style="stroke:none" x="${x(last.i)}" y="${y(last.v) - 12}" text-anchor="middle">${pctText(last.v)}</text>`;
+      if (last.i > 0) g += `<text class="val c-${s.p}" x="${x(last.i)}" y="${y(last.v) - 12}" text-anchor="middle">${pctText(last.v)}</text>`;
     });
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     svg.innerHTML = g;

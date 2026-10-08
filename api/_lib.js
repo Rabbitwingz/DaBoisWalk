@@ -9,12 +9,28 @@ const CONFIG = {
   weigh: ['2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05', '2026-11-13']
 };
 
+// Passwords come only from Vercel env vars. There is no fallback, so a missing variable locks that sign-in
+// instead of silently accepting a password anyone reading the code would know.
+function envPassword(name) {
+  const v = process.env[name];
+  if (!v) throw new HttpError(500, 'Set ' + name + ' in the Vercel project settings, then redeploy.');
+  return v;
+}
 const USERS = {
-  manan: { name: 'Manan', password: () => process.env.MANAN_PASSWORD || 'manan123' },
-  mathew: { name: 'Mathew', password: () => process.env.MATHEW_PASSWORD || 'mathew123' }
+  manan: { name: 'Manan', password: () => envPassword('MANAN_PASSWORD') },
+  mathew: { name: 'Mathew', password: () => envPassword('MATHEW_PASSWORD') }
 };
 
-const COOKIE = 'wc_session';
+// Redis keys. Screenshot times live in their own hash so saving a day can never overwrite an upload.
+const KEYS = {
+  days: 'dbw:days',     // hash: user:date -> {"steps","alcohol","updatedAt"}
+  weigh: 'dbw:weigh',   // hash: user:date -> kg
+  shots: 'dbw:shots',   // hash: user:date -> upload time in ms, server clock
+  shot: (field) => 'dbw:shot:' + field,   // string: image data URL
+  fails: (user) => 'dbw:fails:' + user
+};
+
+const COOKIE = 'dbw_session';
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 function addDays(iso, n) {
@@ -24,7 +40,7 @@ function addDays(iso, n) {
 }
 const END = addDays(CONFIG.start, CONFIG.days - 1);
 const todayIST = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
-const deadline = (d) => Date.parse(d + 'T23:55:00+05:30');
+const fmtDay = (iso) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -60,10 +76,17 @@ function pairs(raw, map) {
   return o;
 }
 
-async function loadAll() {
-  const [days, weigh] = await redis([['HGETALL', 'wc:days'], ['HGETALL', 'wc:weigh']]);
-  return { days: pairs(days, (v) => JSON.parse(v)), weigh: pairs(weigh, Number), today: todayIST() };
+// Runs any writes, then reads everything back, in a single round trip to Redis.
+async function writeAndLoad(writes = []) {
+  const out = await redis([...writes, ['HGETALL', KEYS.days], ['HGETALL', KEYS.weigh], ['HGETALL', KEYS.shots]]);
+  const [days, weigh, shots] = out.slice(writes.length);
+  const merged = pairs(days, (v) => JSON.parse(v));
+  for (const [field, at] of Object.entries(pairs(shots, Number))) {
+    merged[field] = Object.assign({ steps: null, alcohol: null }, merged[field], { shotAt: at });
+  }
+  return { days: merged, weigh: pairs(weigh, Number), today: todayIST() };
 }
+const loadAll = () => writeAndLoad();
 
 /* ---------- sessions: HMAC-signed cookie ---------- */
 function secret() {
@@ -93,7 +116,7 @@ function sessionUser(req) {
   }
   if (!val) return null;
   const [user, exp, sig] = val.split('.');
-  if (!user || !exp || !sig || !USERS[user]) return null;
+  if (!user || !exp || !sig || !Object.hasOwn(USERS, user)) return null;
   if (Number(exp) < Date.now() / 1000) return null;
   if (!safeEqual(sig, sign(user + '.' + exp))) return null;
   return user;
@@ -108,7 +131,7 @@ function requireUser(req) {
 /* ---------- validation ---------- */
 function checkDate(date) {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < CONFIG.start || date > END) {
-    throw new HttpError(400, 'Pick a day inside the challenge, Oct 15 to Nov 13.');
+    throw new HttpError(400, 'Pick a day inside the challenge, ' + fmtDay(CONFIG.start) + ' to ' + fmtDay(END) + '.');
   }
   if (date > todayIST()) throw new HttpError(400, 'That day has not happened yet.');
   return date;
@@ -144,7 +167,7 @@ function route(methods, fn) {
 }
 
 module.exports = {
-  CONFIG, USERS, END, todayIST, deadline, HttpError,
-  redis, loadAll, sessionCookie, clearedCookie, sessionUser, requireUser, safeEqual,
+  CONFIG, USERS, KEYS, END, todayIST, HttpError,
+  loadAll, writeAndLoad, redis, sessionCookie, clearedCookie, sessionUser, requireUser, safeEqual,
   checkDate, send, readBody, route
 };

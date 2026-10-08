@@ -1,4 +1,4 @@
-const { CONFIG, redis, loadAll, requireUser, checkDate, send, readBody, route, HttpError } = require('./_lib');
+const { CONFIG, KEYS, loadAll, writeAndLoad, requireUser, checkDate, send, readBody, route, HttpError } = require('./_lib');
 
 module.exports = route(['GET', 'POST'], async (req, res) => {
   const user = requireUser(req);
@@ -15,26 +15,22 @@ module.exports = route(['GET', 'POST'], async (req, res) => {
   }
   const alcohol = b.alcohol === 'dry' || b.alcohol === 'drank' ? b.alcohol : null;
 
-  const field = user + ':' + date;
-  const [prevRaw] = await redis([['HGET', 'wc:days', field]]);
-  let prev = null;
-  try { prev = prevRaw ? JSON.parse(prevRaw) : null; } catch (e) { prev = null; }
-  const shotAt = prev && typeof prev.shotAt === 'number' ? prev.shotAt : null;
-
-  const cmds = [];
-  if (steps === null && !alcohol && shotAt === null) cmds.push(['HDEL', 'wc:days', field]);
-  else cmds.push(['HSET', 'wc:days', field, JSON.stringify({ steps, alcohol, shotAt, updatedAt: Date.now() })]);
-
+  let kg = null;
   if (CONFIG.weigh.includes(date)) {
-    let kg = b.kg;
-    if (kg === undefined || kg === '') kg = null;
+    kg = b.kg === undefined || b.kg === '' ? null : b.kg;
     if (kg !== null && (typeof kg !== 'number' || !isFinite(kg) || kg < 25 || kg > 300)) {
       throw new HttpError(400, 'Weight must be in kg, between 25 and 300.');
     }
-    if (kg === null) cmds.push(['HDEL', 'wc:weigh', field]);
-    else cmds.push(['HSET', 'wc:weigh', field, String(Math.round(kg * 10) / 10)]);
   }
 
-  await redis(cmds);
-  send(res, 200, await loadAll());
+  // Validate everything before writing anything.
+  const field = user + ':' + date;
+  const writes = [steps === null && !alcohol
+    ? ['HDEL', KEYS.days, field]
+    : ['HSET', KEYS.days, field, JSON.stringify({ steps, alcohol, updatedAt: Date.now() })]];
+  if (CONFIG.weigh.includes(date)) {
+    writes.push(kg === null ? ['HDEL', KEYS.weigh, field] : ['HSET', KEYS.weigh, field, String(Math.round(kg * 10) / 10)]);
+  }
+
+  send(res, 200, await writeAndLoad(writes));
 });
