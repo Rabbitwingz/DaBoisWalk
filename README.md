@@ -2,7 +2,7 @@
 
 Private 30-day tracker for Manan and Mathew: daily steps, alcohol, step screenshots and weekly weigh-ins (Oct 15 to Nov 13, 2026, IST).
 
-Live at https://da-bois-walk.vercel.app
+Live at https://daboiswalk.vercel.app (Vercel project `daboiswalk`, GitHub repo `Rabbitwingz/DaBoisWalk`)
 
 ## Structure
 
